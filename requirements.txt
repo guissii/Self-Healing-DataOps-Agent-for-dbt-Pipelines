@@ -1,6 +1,14 @@
+# Core Data & Warehouse
 psycopg2-binary==2.9.9
 Faker==25.8.0
 dbt-postgres==1.7.13
+
+# Agent & AI (LangGraph ReAct)
 langgraph==0.1.5
 langchain-openai==0.1.7
 GitPython==3.1.43
+python-dotenv>=1.0.0
+
+# Web Dashboard (FastAPI)
+fastapi>=0.110.0
+uvicorn>=0.28.0

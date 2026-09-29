@@ -1,6 +1,16 @@
 import subprocess
 import time
 import os
+import sys
+
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+
+# Ensure virtualenv binaries (like dbt.exe) are found on Windows
+venv_scripts = os.path.join(sys.prefix, "Scripts")
+if os.path.exists(venv_scripts) and venv_scripts not in os.environ.get("PATH", ""):
+    os.environ["PATH"] = venv_scripts + os.pathsep + os.environ.get("PATH", "")
 
 # The clean SQL state that we want to reset to
 CLEAN_SQL = """-- This model cleans the raw data
@@ -36,34 +46,42 @@ def main():
         f.write(CLEAN_SQL)
     print("✅ SQL file reset.")
 
-    # 2. Nuke Docker environment
-    print("\n--- Wiping Docker Database ---")
-    run_command(["docker", "compose", "down", "-v"])
-    
-    # 3. Start fresh Docker environment
-    print("\n--- Spinning up fresh Database & Airflow ---")
-    run_command(["docker", "compose", "up", "-d"])
-    
-    # 4. Wait for Postgres to initialize
-    print("\n--- Waiting 5 seconds for Postgres to boot ---")
-    time.sleep(5)
+    # 2. Reset Database (Docker if available, or native local Postgres)
+    docker_ready = False
+    try:
+        check = subprocess.run(["docker", "info"], capture_output=True, text=True)
+        if check.returncode == 0:
+            docker_ready = True
+    except Exception:
+        pass
 
-    # 5. Generate fake data
+    if docker_ready:
+        print("\n--- Wiping Docker Database ---")
+        run_command(["docker", "compose", "down", "-v"])
+        print("\n--- Spinning up fresh Database & Airflow ---")
+        run_command(["docker", "compose", "up", "-d"])
+        print("\n--- Waiting 5 seconds for Postgres to boot ---")
+        time.sleep(5)
+    else:
+        print("\n--- Resetting PostgreSQL Database natively ---")
+        run_command([sys.executable, "init_db.py"])
+
+    # 3. Generate fake data
     print("\n--- Generating Fake Data ---")
-    run_command(["python", "src/data_generator.py"])
+    run_command([sys.executable, "src/data_generator.py"])
 
-    # 6. Run dbt (should pass)
+    # 4. Run dbt (should pass)
     print("\n--- Running dbt (Proving it works) ---")
     run_command(["dbt", "run", "--profiles-dir", "."], cwd="dbt_project")
     run_command(["dbt", "test", "--profiles-dir", "."], cwd="dbt_project")
 
-    # 7. Sabotage the pipeline!
+    # 5. Sabotage the pipeline!
     print("\n--- SABOTEUR ACTIVATED ---")
-    run_command(["python", "src/schema_breaker.py"])
+    run_command([sys.executable, "src/schema_breaker.py"])
 
-    # 8. Run the AI Agent to fix it!
+    # 6. Run the AI Agent to fix it!
     print("\n---  AI AGENT WAKING UP ---")
-    run_command(["python", "src/agent.py"])
+    run_command([sys.executable, "src/agent.py"])
 
     print("\n DEMO SEQUENCE COMPLETE. Check GitHub for the Pull Request!")
 

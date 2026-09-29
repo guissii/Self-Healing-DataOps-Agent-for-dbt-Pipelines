@@ -60,13 +60,17 @@ def write_dbt_file(model_name: str, new_sql: str) -> str:
         file.write(new_sql)
     return f"Successfully wrote new SQL code to {model_name}.sql"
 
+DBT_EXE = os.path.join(sys.prefix, "Scripts", "dbt.exe")
+if not os.path.exists(DBT_EXE):
+    DBT_EXE = "dbt"
+
 # Tool 4: Run dbt tests to verify the fix
 def run_dbt_tests() -> str:
     """Builds and runs dbt tests to verify the fix works."""
     try:
         # First run dbt run to materialize updated SQL in Postgres
         run_res = subprocess.run(
-            ["dbt", "run", "--profiles-dir", "."],
+            [DBT_EXE, "run", "--profiles-dir", "."],
             cwd=DBT_PROJECT_DIR,
             capture_output=True,
             text=True
@@ -77,7 +81,7 @@ def run_dbt_tests() -> str:
 
         # Then run dbt test
         test_res = subprocess.run(
-            ["dbt", "test", "--profiles-dir", "."], 
+            [DBT_EXE, "test", "--profiles-dir", "."], 
             cwd=DBT_PROJECT_DIR,
             capture_output=True, 
             text=True

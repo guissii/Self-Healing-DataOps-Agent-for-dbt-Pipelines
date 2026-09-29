@@ -13,6 +13,9 @@ from scenarios import SCENARIOS, execute_sabotage
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 DBT_PROJECT_DIR = os.path.join(PROJECT_ROOT, "dbt_project")
 PYTHON_EXE = sys.executable
+DBT_EXE = os.path.join(sys.prefix, "Scripts", "dbt.exe")
+if not os.path.exists(DBT_EXE):
+    DBT_EXE = "dbt"
 
 # Add virtualenv Scripts to PATH
 venv_scripts = os.path.join(sys.prefix, "Scripts")
@@ -155,8 +158,8 @@ def reset_all():
         subprocess.run([PYTHON_EXE, "src/data_generator.py"], cwd=PROJECT_ROOT, check=True, capture_output=True)
         
         # Run dbt run & test
-        subprocess.run(["dbt", "run", "--profiles-dir", "."], cwd=DBT_PROJECT_DIR, capture_output=True, text=True)
-        test_res = subprocess.run(["dbt", "test", "--profiles-dir", "."], cwd=DBT_PROJECT_DIR, capture_output=True, text=True)
+        subprocess.run([DBT_EXE, "run", "--profiles-dir", "."], cwd=DBT_PROJECT_DIR, capture_output=True, text=True)
+        test_res = subprocess.run([DBT_EXE, "test", "--profiles-dir", "."], cwd=DBT_PROJECT_DIR, capture_output=True, text=True)
         
         dbt_ok = (test_res.returncode == 0)
 
@@ -201,10 +204,10 @@ def sabotage_pipeline(scenario_id: str):
         scenario = execute_sabotage(scenario_id)
         
         # Run dbt run to trigger and capture the real failure
-        res = subprocess.run(["dbt", "run", "--profiles-dir", "."], cwd=DBT_PROJECT_DIR, capture_output=True, text=True)
+        res = subprocess.run([DBT_EXE, "run", "--profiles-dir", "."], cwd=DBT_PROJECT_DIR, capture_output=True, text=True)
         error_log = res.stdout[-1500:] if res.stdout else res.stderr[-1500:]
         if res.returncode == 0:
-            t_res = subprocess.run(["dbt", "test", "--profiles-dir", "."], cwd=DBT_PROJECT_DIR, capture_output=True, text=True)
+            t_res = subprocess.run([DBT_EXE, "test", "--profiles-dir", "."], cwd=DBT_PROJECT_DIR, capture_output=True, text=True)
             error_log = t_res.stdout[-1500:] if t_res.stdout else t_res.stderr[-1500:]
 
         # Update session tracking
@@ -347,10 +350,10 @@ def approve_merge():
         commit_url = f"{GITHUB_REPO_URL}/commit/{commit_hash}"
 
         # Step 4: Run dbt run to deploy and materialize views in production
-        run_res = subprocess.run(["dbt", "run", "--profiles-dir", "."], cwd=DBT_PROJECT_DIR, capture_output=True, text=True)
+        run_res = subprocess.run([DBT_EXE, "run", "--profiles-dir", "."], cwd=DBT_PROJECT_DIR, capture_output=True, text=True)
 
         # Step 5: Run dbt test to verify production health
-        test_res = subprocess.run(["dbt", "test", "--profiles-dir", "."], cwd=DBT_PROJECT_DIR, capture_output=True, text=True)
+        test_res = subprocess.run([DBT_EXE, "test", "--profiles-dir", "."], cwd=DBT_PROJECT_DIR, capture_output=True, text=True)
         dbt_ok = (test_res.returncode == 0)
 
         # Update session decision

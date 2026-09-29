@@ -2,7 +2,7 @@
 SELECT 
     order_id,
     user_id,
-    total_amount AS order_amount,
+    order_amount,
     user_dob,
     created_at
 FROM raw_orders

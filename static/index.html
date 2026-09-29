@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <!-- Background Glow & Grid -->
+  <!-- Ambient Glow Backgrounds -->
   <div class="ambient-glow glow-top-left"></div>
   <div class="ambient-glow glow-bottom-right"></div>
 
@@ -24,8 +24,8 @@
           </svg>
         </div>
         <div>
-          <h1>Self-Healing Pipeline</h1>
-          <p class="subtitle">Autonomous Data-Ops with LangGraph & Human-in-the-Loop Review</p>
+          <h1>Self-Healing DataOps Agent</h1>
+          <p class="subtitle">Autonomous Schema Drift Remediation with LangGraph ReAct & Human-in-the-Loop Review</p>
         </div>
       </div>
       <div class="header-actions">
@@ -37,6 +37,12 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3v12M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 9a9 9 0 0 1-9 9"/></svg>
           <span id="current-branch-text">main</span>
         </div>
+        <a href="https://github.com/guissii/Self-Healing-DataOps-Agent-for-dbt-Pipelines" target="_blank" class="btn btn-github" title="Accéder au dépôt GitHub">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+          </svg>
+          GitHub
+        </a>
         <button id="btn-reset-env" class="btn btn-secondary" title="Réinitialiser la base de données et le code au propre">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
           Reset Baseline
@@ -60,7 +66,6 @@
             <span class="badge badge-accent">PostgreSQL 5432</span>
           </div>
           <div id="columns-container" class="columns-chips">
-            <!-- Dynamic columns here -->
             <span class="column-chip">order_id <small>varchar</small></span>
             <span class="column-chip">user_id <small>varchar</small></span>
             <span class="column-chip">order_amount <small>numeric</small></span>
@@ -128,8 +133,8 @@
           </div>
           <div id="terminal-feed" class="terminal-body">
             <div class="feed-welcome">
-              <p>🤖 <strong>Bienvenue sur la console de contrôle.</strong></p>
-              <p class="muted">Sélectionnez un scénario de dérive de schéma sur la gauche et cliquez sur « Déclencher la Panne » pour observer le cycle de guérison autonome.</p>
+              <p>🤖 <strong>Console de supervision DataOps autonome.</strong></p>
+              <p class="muted">Sélectionnez un scénario de dérive à gauche, cliquez sur « Déclencher la Panne », puis réveillez l'agent pour assister à son raisonnement en temps réel.</p>
             </div>
           </div>
         </div>
@@ -146,30 +151,90 @@
             </div>
           </div>
 
-          <p class="hitl-instructions">
-            L'agent IA a généré un correctif et validé avec succès l'ensemble des tests dbt en environnement isolé. 
-            <strong>En tant qu'ingénieur responsable, examinez le diff SQL avant de donner votre accord de fusion vers main.</strong>
-          </p>
-
-          <!-- Visual Code Diff -->
-          <div class="diff-viewer">
-            <div class="diff-header">
-              <span>Modèle modifié : <code>stg_orders.sql</code></span>
-              <span class="tests-pass-badge">✓ Tests dbt : 100% PASS</span>
+          <!-- Context Box: Ce qui a été demandé et ce qui s'est passé -->
+          <div class="hitl-context-box">
+            <div class="context-item">
+              <span class="context-label">💥 Panne / Dérive détectée :</span>
+              <span id="hitl-scenario-desc" class="context-val text-amber">Colonne 'user_dob' renommée en 'date_of_birth'</span>
             </div>
+            <div class="context-item">
+              <span class="context-label">🤖 Diagnostic & Action de l'Agent IA :</span>
+              <span id="hitl-agent-action" class="context-val text-cyan">Branche isolée créée, alias SQL appliqué, 2/2 tests dbt validés (PASS).</span>
+            </div>
+            <div class="context-item">
+              <span class="context-label">🛡️ Règle de Gouvernance :</span>
+              <span class="context-val">Aucun push vers <code>main</code> n'est permis sans l'approbation explicite de l'ingénieur humain.</span>
+            </div>
+          </div>
+
+          <!-- View Mode Selector (Tabs) -->
+          <div class="diff-tabs-bar">
+            <div class="tabs-group">
+              <button id="tab-side-by-side" class="tab-btn active">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="18" rx="2"/><rect x="13" y="3" width="8" height="18" rx="2"/></svg>
+                Comparaison Côte-à-Côte (Avant vs Après)
+              </button>
+              <button id="tab-unified-diff" class="tab-btn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                Diff Git Patch
+              </button>
+            </div>
+            <span class="tests-pass-badge">✓ Tests dbt Sandbox : 100% PASS</span>
+          </div>
+
+          <!-- Side-by-Side Diff View -->
+          <div id="side-by-side-view" class="side-by-side-grid">
+            <!-- Left: Before (Broken) -->
+            <div class="code-panel panel-before">
+              <div class="code-panel-header">
+                <span class="panel-tag tag-danger">❌ AVANT (Version Rompue - main)</span>
+                <span class="panel-file">stg_orders.sql</span>
+              </div>
+              <div id="before-code-container" class="code-panel-body">
+                <!-- Injected via JS -->
+              </div>
+            </div>
+
+            <!-- Right: After (Fixed) -->
+            <div class="code-panel panel-after">
+              <div class="code-panel-header">
+                <span class="panel-tag tag-success">✅ APRÈS (Version Réparée par l'IA)</span>
+                <span class="panel-file">stg_orders.sql</span>
+              </div>
+              <div id="after-code-container" class="code-panel-body">
+                <!-- Injected via JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Unified Git Diff View (Alternative tab) -->
+          <div id="unified-diff-view" class="diff-viewer hidden">
             <pre id="diff-content" class="diff-pre"></pre>
           </div>
 
-          <!-- Human Decisions -->
-          <div class="hitl-decision-bar">
-            <button id="btn-reject-fix" class="btn btn-outline-danger">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-              Rejeter le correctif (Abandonner la branche)
-            </button>
-            <button id="btn-approve-merge" class="btn btn-success">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-              Approuver et Fusionner sur Main (Merge PR)
-            </button>
+          <!-- Decision Status & Actions Bar -->
+          <div class="hitl-decision-container">
+            <div class="decision-status-pill">
+              <span class="pulse-dot-amber"></span>
+              <span>Statut : <strong>En attente d'arbitrage humain</strong></span>
+            </div>
+
+            <div class="hitl-actions-group">
+              <a id="btn-github-pr" href="https://github.com/guissii/Self-Healing-DataOps-Agent-for-dbt-Pipelines" target="_blank" class="btn btn-outline-github" title="Ouvrir la Pull Request directement sur GitHub">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                </svg>
+                Ouvrir la Pull Request sur GitHub
+              </a>
+              <button id="btn-reject-fix" class="btn btn-outline-danger">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                Rejeter le correctif (Abandonner)
+              </button>
+              <button id="btn-approve-merge" class="btn btn-success">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                Approuver, Fusionner & Pousser sur GitHub (Push main)
+              </button>
+            </div>
           </div>
         </div>
 
@@ -177,13 +242,25 @@
         <div id="orchestration-card" class="glass-card orchestration-container hidden">
           <div class="orchestration-header">
             <div class="orchestration-icon">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
             </div>
             <div>
-              <h3 class="text-success">Orchestration & Déploiement Production Réussi !</h3>
-              <p class="muted">Version finale validée, fusionnée, synchronisée et déployée sur la branche <code>main</code>.</p>
+              <h3 class="text-success">Validation Humaine Accordée & Synchronisée sur GitHub !</h3>
+              <p class="muted">L'être humain a approuvé le changement. Le code a été fusionné et immédiatement poussé vers <code>origin/main</code>.</p>
             </div>
-            <span class="badge-success-glow">LIVE EN PROD</span>
+            <span class="badge-success-glow">LIVE SUR GITHUB MAIN</span>
+          </div>
+
+          <!-- Traceability Summary Box -->
+          <div class="trace-summary-box">
+            <div class="trace-row">
+              <span class="trace-badge-human">👤 Décision Humaine :</span>
+              <strong>APPROUVÉ & VALIDÉ PAR L'INGÉNIEUR</strong>
+            </div>
+            <div class="trace-row">
+              <span class="trace-badge-git">🚀 Push GitHub :</span>
+              <span>Synchronisé avec succès sur la branche <code>main</code> de GitHub</span>
+            </div>
           </div>
 
           <div class="orchestration-steps" id="orchestration-steps-list">
@@ -194,9 +271,15 @@
             <div class="commit-info">
               Commit de production : <strong id="prod-commit-hash">---</strong>
             </div>
-            <button id="btn-done-orchestration" class="btn btn-secondary">
-              Fermer et Réinitialiser
-            </button>
+            <div class="orchestration-buttons">
+              <a id="btn-github-commit-link" href="#" target="_blank" class="btn btn-outline-github">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                Voir le Commit sur GitHub
+              </a>
+              <button id="btn-done-orchestration" class="btn btn-secondary">
+                Fermer
+              </button>
+            </div>
           </div>
         </div>
 

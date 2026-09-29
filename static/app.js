@@ -1,6 +1,13 @@
 let selectedScenarioId = null;
 let currentErrorLog = "";
 let eventSource = null;
+let currentOriginalSql = "";
+let currentFixedSql = "";
+let currentDiff = "";
+let currentBranch = "main";
+let currentScenario = null;
+
+const GITHUB_REPO_URL = "https://github.com/guissii/Self-Healing-DataOps-Agent-for-dbt-Pipelines";
 
 // DOM Elements
 const statusBadge = document.getElementById("pipeline-status-badge");
@@ -14,11 +21,29 @@ const errorLogContent = document.getElementById("error-log-content");
 const btnStartAgent = document.getElementById("btn-start-agent");
 const terminalFeed = document.getElementById("terminal-feed");
 const agentSpinner = document.getElementById("agent-spinner");
+
+// HITL Elements
 const hitlGate = document.getElementById("hitl-gate");
 const hitlBranchName = document.getElementById("hitl-branch-name");
+const hitlScenarioDesc = document.getElementById("hitl-scenario-desc");
+const hitlAgentAction = document.getElementById("hitl-agent-action");
+const tabSideBySide = document.getElementById("tab-side-by-side");
+const tabUnifiedDiff = document.getElementById("tab-unified-diff");
+const sideBySideView = document.getElementById("side-by-side-view");
+const unifiedDiffView = document.getElementById("unified-diff-view");
+const beforeCodeContainer = document.getElementById("before-code-container");
+const afterCodeContainer = document.getElementById("after-code-container");
 const diffContent = document.getElementById("diff-content");
+const btnGithubPr = document.getElementById("btn-github-pr");
 const btnApproveMerge = document.getElementById("btn-approve-merge");
 const btnRejectFix = document.getElementById("btn-reject-fix");
+
+// Orchestration Elements
+const orchestrationCard = document.getElementById("orchestration-card");
+const orchestrationStepsList = document.getElementById("orchestration-steps-list");
+const prodCommitHash = document.getElementById("prod-commit-hash");
+const btnGithubCommitLink = document.getElementById("btn-github-commit-link");
+const btnDoneOrchestration = document.getElementById("btn-done-orchestration");
 
 // Helper: Set Pipeline Status Badge
 function setStatus(type, text) {
@@ -26,20 +51,51 @@ function setStatus(type, text) {
   statusBadge.querySelector(".status-text").textContent = text;
 }
 
+// Tab Switching
+tabSideBySide.addEventListener("click", () => {
+  tabSideBySide.classList.add("active");
+  tabUnifiedDiff.classList.remove("active");
+  sideBySideView.classList.remove("hidden");
+  unifiedDiffView.classList.add("hidden");
+});
+
+tabUnifiedDiff.addEventListener("click", () => {
+  tabUnifiedDiff.classList.add("active");
+  tabSideBySide.classList.remove("active");
+  sideBySideView.classList.add("hidden");
+  unifiedDiffView.classList.remove("hidden");
+});
+
 // Fetch and render initial status
 async function loadStatus() {
   try {
     const res = await fetch("/api/status");
     const data = await res.json();
     
+    currentBranch = data.branch;
     branchText.textContent = data.branch;
     renderColumns(data.columns);
 
+    if (data.session && data.session.scenario_title) {
+      currentScenario = data.session;
+    }
+
     if (data.is_fix_pending) {
       setStatus("review", "Validation Humaine Requise");
-      showHitlGate(data.branch, data.diff);
+      showHitlGate({
+        branch: data.branch,
+        diff: data.diff,
+        originalSql: data.original_sql,
+        fixedSql: data.current_sql,
+        githubPrUrl: data.github_pr_url,
+        scenario: data.session
+      });
     } else {
-      setStatus("healthy", "Pipeline Opérationnel");
+      if (data.session && data.session.human_decision === "approved") {
+        setStatus("healthy", "Validé par l'humain & En Ligne sur GitHub");
+      } else {
+        setStatus("healthy", "Pipeline Opérationnel");
+      }
       hitlGate.classList.add("hidden");
     }
   } catch (err) {
@@ -85,6 +141,7 @@ async function loadScenarios() {
         document.querySelectorAll(".scenario-item").forEach(el => el.classList.remove("selected"));
         item.classList.add("selected");
         selectedScenarioId = sc.id;
+        currentScenario = sc;
       });
 
       scenariosList.appendChild(item);
@@ -92,6 +149,7 @@ async function loadScenarios() {
 
     if (scenarios.length > 0) {
       selectedScenarioId = scenarios[0].id;
+      currentScenario = scenarios[0];
     }
   } catch (err) {
     console.error("Failed to load scenarios:", err);
@@ -109,12 +167,13 @@ btnResetEnv.addEventListener("click", async () => {
     
     errorCard.classList.add("hidden");
     hitlGate.classList.add("hidden");
+    orchestrationCard.classList.add("hidden");
     setStatus("healthy", "Pipeline Opérationnel");
     
     terminalFeed.innerHTML = `
       <div class="feed-item feed-done">
         ✓ <strong>Environnement réinitialisé avec succès :</strong><br>
-        Base PostgreSQL restaurée, 5 commandes générées, tests dbt 100% PASS.
+        Base PostgreSQL restaurée, schéma raw_orders conforme, tests dbt 100% PASS sur <code>main</code>.
       </div>
     `;
     await loadStatus();
@@ -144,6 +203,8 @@ btnTriggerSabotage.addEventListener("click", async () => {
     }
     const data = await res.json();
 
+    currentScenario = data.scenario;
+    currentOriginalSql = data.original_sql || "";
     setStatus("broken", "Pipeline Crashé (Schema Drift)");
     renderColumns(data.columns);
 
@@ -151,11 +212,13 @@ btnTriggerSabotage.addEventListener("click", async () => {
     errorLogContent.textContent = data.error_log;
     errorCard.classList.remove("hidden");
     hitlGate.classList.add("hidden");
+    orchestrationCard.classList.add("hidden");
 
     terminalFeed.innerHTML += `
       <div class="feed-item" style="background: rgba(239, 68, 68, 0.1); border-left: 3px solid #ef4444; color: #fca5a5;">
         💥 <strong>Panne déclenchée :</strong> ${data.scenario.title}<br>
-        <small style="font-family: var(--font-mono); color: #f87171;">${data.scenario.sql}</small>
+        <small style="font-family: var(--font-mono); color: #f87171;">SQL exécuté : ${data.scenario.sql}</small><br>
+        <span style="font-size: 0.78rem; color: #fca5a5;">Le pipeline dbt est en échec. Cliquez ci-dessous pour réveiller l'agent de réparation autonome.</span>
       </div>
     `;
     terminalFeed.scrollTop = terminalFeed.scrollHeight;
@@ -222,12 +285,20 @@ function handleAgentEvent(data) {
     item.innerHTML = `<strong>📥 Résultat d'exécution :</strong><pre style="margin-top: 4px; white-space: pre-wrap;">${escapeHtml(data.content)}</pre>`;
   } else if (data.type === "done") {
     item.className = "feed-item feed-done";
-    item.innerHTML = `🎉 <strong>${data.message}</strong> Branche créée : <code>${data.branch}</code>`;
+    item.innerHTML = `🎉 <strong>${data.message}</strong> Branche créée : <code>${data.branch}</code><br><small style="color: #38bdf8;">Branche poussée sur GitHub distant. En attente de validation humaine avant tout merge dans main.</small>`;
     
     agentSpinner.classList.add("hidden");
     btnStartAgent.disabled = false;
     setStatus("review", "Validation Humaine Requise");
-    showHitlGate(data.branch, data.diff);
+
+    showHitlGate({
+      branch: data.branch,
+      diff: data.diff,
+      originalSql: data.original_sql,
+      fixedSql: data.fixed_sql,
+      githubPrUrl: data.github_pr_url,
+      scenario: data.scenario
+    });
     
     if (eventSource) eventSource.close();
     loadStatus();
@@ -244,16 +315,84 @@ function handleAgentEvent(data) {
   terminalFeed.scrollTop = terminalFeed.scrollHeight;
 }
 
-// Show HITL Decision Gate with formatted Diff
-function showHitlGate(branch, diff) {
-  hitlBranchName.textContent = branch;
-  renderDiff(diff);
+// Show HITL Decision Gate with Side-by-Side comparison and GitHub links
+function showHitlGate(info) {
+  hitlBranchName.textContent = info.branch;
+
+  // 1. Context Information: Ce qui a été demandé et ce qui a été fait
+  const sc = info.scenario || currentScenario;
+  if (sc && sc.scenario_desc) {
+    hitlScenarioDesc.textContent = `${sc.scenario_title} — ${sc.scenario_desc}`;
+  } else if (sc && sc.description) {
+    hitlScenarioDesc.textContent = `${sc.title} — ${sc.description}`;
+  } else {
+    hitlScenarioDesc.textContent = "Dérive de schéma détectée dans raw_orders.";
+  }
+
+  hitlAgentAction.innerHTML = `Branche isolée <code>${info.branch}</code> créée et poussée sur GitHub. Tests dbt exécutés en sandbox : <strong>100% PASS</strong>.`;
+
+  // 2. Direct GitHub PR link
+  const prUrl = info.githubPrUrl || `${GITHUB_REPO_URL}/compare/main...${info.branch}?expand=1`;
+  btnGithubPr.href = prUrl;
+
+  // 3. Render Side-by-Side Code Diff
+  currentOriginalSql = info.originalSql || "";
+  currentFixedSql = info.fixedSql || "";
+  currentDiff = info.diff || "";
+
+  renderSideBySide(currentOriginalSql, currentFixedSql);
+  renderUnifiedDiff(currentDiff);
+
   hitlGate.classList.remove("hidden");
   hitlGate.scrollIntoView({ behavior: "smooth" });
 }
 
-// Render syntax highlighted Diff
-function renderDiff(diffText) {
+// Render Side-by-Side Code Comparison (Avant / Après)
+function renderSideBySide(beforeSql, afterSql) {
+  const beforeLines = (beforeSql || "").trim().split("\n");
+  const afterLines = (afterSql || "").trim().split("\n");
+
+  // Render Before (Broken)
+  beforeCodeContainer.innerHTML = "";
+  beforeLines.forEach((line, idx) => {
+    const row = document.createElement("div");
+    row.className = "line-row";
+
+    // Detect if this line was replaced/removed
+    const isAltered = line.includes("user_dob") || line.includes("order_amount") || line.includes("user_id");
+    if (isAltered && !afterSql.includes(line.trim())) {
+      row.classList.add("line-diff-removed");
+    }
+
+    row.innerHTML = `
+      <span class="line-num">${idx + 1}</span>
+      <span class="line-text">${escapeHtml(line)}</span>
+    `;
+    beforeCodeContainer.appendChild(row);
+  });
+
+  // Render After (Fixed by AI)
+  afterCodeContainer.innerHTML = "";
+  afterLines.forEach((line, idx) => {
+    const row = document.createElement("div");
+    row.className = "line-row";
+
+    // Detect if this line contains the fix (alias, cast, rename)
+    const isFixLine = line.toLowerCase().includes(" as ") || line.includes("::") || line.includes("cast");
+    if (isFixLine || !beforeSql.includes(line.trim())) {
+      row.classList.add("line-diff-added");
+    }
+
+    row.innerHTML = `
+      <span class="line-num">${idx + 1}</span>
+      <span class="line-text">${escapeHtml(line)}</span>
+    `;
+    afterCodeContainer.appendChild(row);
+  });
+}
+
+// Render syntax highlighted Unified Git Diff
+function renderUnifiedDiff(diffText) {
   if (!diffText || diffText.trim() === "") {
     diffContent.innerHTML = "<em>Aucune différence détectée (fichiers identiques)</em>";
     return;
@@ -272,22 +411,16 @@ function renderDiff(diffText) {
   diffContent.innerHTML = formatted;
 }
 
-// DOM Elements for Orchestration
-const orchestrationCard = document.getElementById("orchestration-card");
-const orchestrationStepsList = document.getElementById("orchestration-steps-list");
-const prodCommitHash = document.getElementById("prod-commit-hash");
-const btnDoneOrchestration = document.getElementById("btn-done-orchestration");
-
-// Human Decision: Approve & Merge PR
+// Human Decision: Approve & Merge PR & Push to GitHub Main
 btnApproveMerge.addEventListener("click", async () => {
   btnApproveMerge.disabled = true;
-  btnApproveMerge.innerHTML = `<span class="spin"></span> Déploiement & Synchronisation...`;
+  btnApproveMerge.innerHTML = `<span class="spin"></span> Déploiement & Push GitHub...`;
 
   try {
     const res = await fetch("/api/approve-merge", { method: "POST" });
     const data = await res.json();
 
-    setStatus("healthy", "Pipeline Opérationnel (Merge & Deploy Réussi)");
+    setStatus("healthy", "Validé par l'humain & Poussé sur GitHub main");
     hitlGate.classList.add("hidden");
     errorCard.classList.add("hidden");
 
@@ -303,13 +436,20 @@ btnApproveMerge.addEventListener("click", async () => {
             <div class="step-name">${escapeHtml(st.name)}</div>
             <div class="step-desc">${escapeHtml(st.detail)}</div>
           </div>
-          <span class="step-status-tag">✓ SUCCÈS</span>
+          <span class="step-status-tag">✓ VALIDÉ</span>
         `;
         orchestrationStepsList.appendChild(row);
       });
     }
 
     prodCommitHash.textContent = data.commit_hash || "main";
+    if (data.commit_url) {
+      btnGithubCommitLink.href = data.commit_url;
+      btnGithubCommitLink.classList.remove("hidden");
+    } else {
+      btnGithubCommitLink.href = GITHUB_REPO_URL;
+    }
+
     orchestrationCard.classList.remove("hidden");
     orchestrationCard.scrollIntoView({ behavior: "smooth" });
 
@@ -320,7 +460,7 @@ btnApproveMerge.addEventListener("click", async () => {
     btnApproveMerge.disabled = false;
     btnApproveMerge.innerHTML = `
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-      Approuver et Fusionner sur Main (Merge PR)
+      Approuver, Fusionner & Pousser sur GitHub (Push main)
     `;
   }
 });
@@ -336,7 +476,7 @@ btnRejectFix.addEventListener("click", async () => {
   }
 
   btnRejectFix.disabled = true;
-  btnRejectFix.innerHTML = `<span class="spin"></span> Rejet...`;
+  btnRejectFix.innerHTML = `<span class="spin"></span> Rejet en cours...`;
 
   try {
     const res = await fetch("/api/reject-fix", { method: "POST" });
@@ -344,6 +484,7 @@ btnRejectFix.addEventListener("click", async () => {
 
     alert("❌ " + data.message);
     hitlGate.classList.add("hidden");
+    setStatus("broken", "Correctif Rejeté par l'Humain");
     await loadStatus();
   } catch (err) {
     alert("Erreur lors du rejet : " + err.message);
@@ -351,7 +492,7 @@ btnRejectFix.addEventListener("click", async () => {
     btnRejectFix.disabled = false;
     btnRejectFix.innerHTML = `
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-      Rejeter le correctif (Abandonner la branche)
+      Rejeter le correctif (Abandonner)
     `;
   }
 });

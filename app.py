@@ -272,19 +272,27 @@ async def stream_agent(error_msg: str = ""):
                         yield f"data: {json.dumps({'type': 'tool_output', 'content': msg.content})}\n\n"
                         await asyncio.sleep(0.08)
 
-            diff = get_git_diff()
             branch = get_current_branch()
             fixed_sql = get_sql_content()
             orig_sql = get_original_sql()
 
+            # Ensure we are on an isolated agent-fix branch, never left on main
+            if branch == "main":
+                branch = f"agent-fix/stg_orders-{int(datetime.now().timestamp())}"
+                subprocess.run(["git", "checkout", "-b", branch], cwd=PROJECT_ROOT, check=True)
+                subprocess.run(["git", "add", "dbt_project/models/staging/stg_orders.sql"], cwd=PROJECT_ROOT, check=True)
+                desc = CURRENT_SESSION.get("expected_fix") or "Auto-fix schema drift in stg_orders"
+                subprocess.run(["git", "commit", "-m", f"AI Fix: {desc}"], cwd=PROJECT_ROOT, check=True)
+
+            diff = get_git_diff()
+
             # Ensure the fix branch is pushed to GitHub remote
             branch_pushed = False
-            if branch != "main":
-                try:
-                    subprocess.run(["git", "push", "-u", "origin", branch], cwd=PROJECT_ROOT, check=True, capture_output=True)
-                    branch_pushed = True
-                except Exception as e:
-                    print(f"Warning: git push failed: {e}")
+            try:
+                subprocess.run(["git", "push", "-u", "origin", branch], cwd=PROJECT_ROOT, check=True, capture_output=True)
+                branch_pushed = True
+            except Exception as e:
+                print(f"Warning: git push failed: {e}")
 
             # Update session
             CURRENT_SESSION["branch"] = branch
